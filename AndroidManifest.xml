@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" android:versionCode="10000" android:versionName="1.0" android:compileSdkVersion="36" android:compileSdkVersionCodename="16" package="com.mycompany.video" platformBuildVersionCode="36" platformBuildVersionName="16">
+	<uses-sdk android:minSdkVersion="24" android:targetSdkVersion="36" />
+	<uses-permission android:name="android.permission.INTERNET" />
+	<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+	<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+	<permission android:name="com.mycompany.video.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" android:protectionLevel="0x2" />
+	<uses-permission android:name="com.mycompany.video.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
+	<application android:theme="resourceId:0x7f0f0005" android:label="resourceId:0x7f0e001c" android:icon="resourceId:0x7f0d0000" android:screenOrientation="-1" android:allowBackup="true" android:hardwareAccelerated="true" android:supportsRtl="true" android:extractNativeLibs="false" android:roundIcon="resourceId:0x7f0d0002" android:appComponentFactory="androidx.core.app.CoreComponentFactory">
+		<provider android:name="androidx.core.content.FileProvider" android:exported="false" android:authorities="com.mycompany.video.provider" android:grantUriPermissions="true">
+			<meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="resourceId:0x7f110000" />
+</provider>
+		<activity android:name="com.mycompany.video.MainActivity" android:exported="true" android:configChanges="0x480" android:hardwareAccelerated="true">
+			<intent-filter>
+				<action android:name="android.intent.action.MAIN" />
+				<category android:name="android.intent.category.LAUNCHER" />
+</intent-filter>
+</activity>
+		<meta-data android:name="android.webkit.WebView.EnableSafeBrowsing" android:value="true" />
+		<provider android:name="androidx.startup.InitializationProvider" android:exported="false" android:authorities="com.mycompany.video.androidx-startup">
+			<meta-data android:name="androidx.emoji2.text.EmojiCompatInitializer" android:value="androidx.startup" />
+			<meta-data android:name="androidx.lifecycle.ProcessLifecycleInitializer" android:value="androidx.startup" />
+			<meta-data android:name="androidx.profileinstaller.ProfileInstallerInitializer" android:value="androidx.startup" />
+</provider>
+		<receiver android:name="androidx.profileinstaller.ProfileInstallReceiver" android:permission="android.permission.DUMP" android:enabled="true" android:exported="true" android:directBootAware="false">
+			<intent-filter>
+				<action android:name="androidx.profileinstaller.action.INSTALL_PROFILE" />
+</intent-filter>
+			<intent-filter>
+				<action android:name="androidx.profileinstaller.action.SKIP_FILE" />
+</intent-filter>
+			<intent-filter>
+				<action android:name="androidx.profileinstaller.action.SAVE_PROFILE" />
+</intent-filter>
+			<intent-filter>
+				<action android:name="androidx.profileinstaller.action.BENCHMARK_OPERATION" />
+</intent-filter>
+</receiver>
+</application>
+</manifest>
