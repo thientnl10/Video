@@ -1,0 +1,1169 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+<title>Video Library - Local (v3.3-edited)</title>
+<style>
+:root{--accent:#2b6cb0;--muted:#666;--card:#fff;--bg:#f3f6fb}
+*{box-sizing:border-box}
+body{font-family:Inter,system-ui,Segoe UI,Roboto,Arial;margin:0;background:var(--bg);color:#111;scroll-behavior:smooth}
+header{background:linear-gradient(90deg,#fff,#eef6ff);padding:12px 12px;display:flex;align-items:center;gap:12px;border-bottom:1px solid #e1e7ef;position:sticky;top:0;z-index:100}
+h1{margin:0;font-size:1rem;cursor:pointer}
+.grow{flex:1}
+button, .btn{background:var(--accent);color:#fff;border:0;padding:8px 12px;border-radius:8px;cursor:pointer}
+.muted{color:var(--muted);font-size:.9rem}
+main{padding:12px 12px 100px}
+.controls{display:flex;gap:12px;align-items:center}
+input[type="search"]{padding:8px 10px;border-radius:8px;border:1px solid #ccd7ea;min-width:200px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-top:16px}
+.card{background:var(--card);padding:8px;border-radius:12px;box-shadow:0 1px 6px rgba(20,40,60,.06);display:flex;flex-direction:column;gap:8px}
+.thumb{width:100%;aspect-ratio:16/9;background:#000;border-radius:8px;display:block;object-fit:cover;cursor:pointer}
+.metaRow{display:flex;align-items:center;gap:8px}
+.small{font-size:.85rem;color:#444}
+.titleOneLine{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.tag{background:#eef6ff;color:#084;border-radius:999px;padding:4px 8px;font-size:.75rem;cursor:pointer}
+.taglist{display:flex;gap:6px;flex-wrap:wrap}
+.iconBtn{background:#1a73e8;color:#fff;border-radius:10px;padding:6px;border:0;cursor:pointer}
+#videoPage{display:none;padding:12px}
+#player{max-width:100%;background:#000;border-radius:8px}
+.descBox{margin-top:12px;padding:10px;background:#f8f9fb;border-radius:8px;border:1px solid #e6e9ef}
+.menuPopup{position:absolute;right:12px;top:56px;background:white;border-radius:10px;padding:8px;box-shadow:0 6px 18px rgba(0,0,0,0.12);z-index:200;min-width:240px}
+.menuPopup .row{padding:8px;border-bottom:1px solid #f1f4f8}
+.menuPopup .row:last-child{border-bottom:0}
+.mutedSmall{color:var(--muted);font-size:.85rem}
+.suggestGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-top:8px}
+footer{padding:12px;color:var(--muted);font-size:.85rem;position:fixed;left:0;right:0;bottom:0;background:transparent}
+
+/* Hiển thị 2 dòng cho tiêu đề video */
+#videoTitle {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+  line-height: 1.3;
+  max-height: 2.6em;
+}
+
+/* đảm bảo phần chứa có thể bị thu nhỏ trong flex layout */
+.metaRow > div[style*="flex:1"] {
+  min-width: 0;
+}
+
+/* import progress overlay (bar) */
+#progressOverlay{position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,0.45);display:none;align-items:center;justify-content:center;z-index:400}
+#progressCard{width:90%;max-width:520px;background:white;padding:16px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,0.3)}
+#progressBar{width:100%;height:12px;background:#f1f4f8;border-radius:8px;overflow:hidden;margin-top:8px}
+#progressFill{height:100%;width:0%;background:linear-gradient(90deg,#2b6cb0,#0b74ff)}
+#progressText{font-size:.95rem;margin-top:8px;color:#222}
+#progressList{margin-top:8px;max-height:160px;overflow:auto;border:1px dashed #eef3fb;padding:8px;border-radius:8px;background:#fbfdff}
+
+/* small thumbnail regen overlay (spinner + text) */
+#miniOverlay{position:fixed;bottom:24%;right:20px;background:rgba(255,255,255,0.98);border-radius:12px;padding:10px 14px;box-shadow:0 6px 20px rgba(0,0,0,0.15);display:none;align-items:center;gap:8px;z-index:420}
+.spinner{width:24px;height:24px;border-radius:50%;border:3px solid rgba(0,0,0,0.08);border-top-color:var(--accent);animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* stars */
+.star {
+  position: relative;
+  font-size: 28px;
+  color: #ccc;
+  cursor: pointer;
+  transition: transform 0.15s, color 0.15s;
+  display: inline-block;
+  width: 28px;
+  text-align: center;
+  user-select: none;
+}
+.star.full { color: #ffc107; }
+.star.half { 
+  background: linear-gradient(90deg, #ffc107 50%, #ccc 50%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.star:hover { transform: scale(1.15); }
+#starContainer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 3px;
+  user-select: none;
+}
+/* Nút lên đầu trang – hiệu ứng mờ trong suốt (glass style) */
+#scrollTopBtn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(10px) saturate(180%);
+  -webkit-backdrop-filter: blur(10px) saturate(180%);
+  color: #222;
+  font-size: 1.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  transition: all 0.25s ease;
+  z-index: 90;
+}
+
+#scrollTopBtn:hover {
+  background: rgba(255, 255, 255, 0.4);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+}
+
+#scrollTopBtn:active {
+  transform: scale(0.95);
+  background: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+html, body {
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100%;
+}
+
+/* --- HEADER --- */
+/* --- HEADER --- */
+header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 200;
+  background: linear-gradient(90deg, #fff, #eef6ff);
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  border-bottom: 1px solid #e1e7ef;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  transition: all 0.25s ease;
+}
+
+header h1 {
+  margin: 0;
+  font-size: 1.5rem; /* to rõ hơn */
+  font-weight: 700;
+  text-align: center;
+  transition: all 0.25s ease;
+}
+
+header .controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+header button#pickDirBtn {
+  background: #1a73e8;
+  color: #fff;
+  border: none;
+  padding: 8px 10px;
+  border-radius: 8px;
+  height: 36px;
+  width: 44px;
+  font-size: 1.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+header input[type="search"] {
+  flex: 1;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid #ccd7ea;
+  padding: 0 10px;
+  font-size: 0.85rem;
+  background: #fff;
+  max-width: 180px;
+}
+
+header button#menuBtn {
+  height: 36px;
+  width: 36px;
+  border-radius: 8px;
+  border: 1px solid #e1e7ef;
+  background: #fff;
+  font-size: 1.3rem;
+  color: #111;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* khi header thu nhỏ */
+header.compact h1 {
+  opacity: 0;
+  transform: translateY(-10px);
+  height: 0;
+  margin: 0;
+  overflow: hidden;
+}
+
+header.compact #pickDirBtn {
+  opacity: 0;
+  transform: scale(0.8);
+  pointer-events: none;
+}
+
+/* thêm đệm cho nội dung bên dưới */
+main {
+  padding-top: 95px !important;
+}
+
+/* giữ media cũ */
+@media (max-width:520px){
+  .grid{
+    grid-template-columns:repeat(auto-fill,minmax(200px,1fr))
+  }
+  .menuPopup{
+    right:8px;
+    left:8px
+  }
+  .titleOneLine{
+    max-width:160px
+  }
+}
+
+/* tag suggestions style */
+#tagSuggestions .tag {
+  background: #eef6ff;
+  color: #084;
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s;
+}
+#tagSuggestions .tag:hover { background: #d0e6ff; }
+
+/* edit popup animations */
+#editPopup { transition: opacity 160ms ease; }
+#editPopup .panel { transform: translateY(0); transition: transform 180ms ease; }
+#editPopup.hidden { opacity: 0; pointer-events: none; }
+
+</style>
+</head>
+<body>
+<header>
+  <h1 id="siteTitle">Video Library (Local)</h1>
+  <div class="grow"></div>
+
+  <div class="controls" aria-label="Controls">
+    <button id="pickDirBtn">📁</button>
+    <input id="fileDirFallback" type="file" webkitdirectory directory multiple style="display:none"/>
+    <input id="searchInput" type="search" placeholder="Tìm theo tên hoặc tag..." />
+    <button id="menuBtn" title="Menu ⋮" style="margin-left:6px;border-radius:8px;padding:8px 10px;background:#fff;color:#111;border:1px solid #e1e7ef">⋮</button>
+  </div>
+</header>
+
+<!-- menu popup -->
+<div id="menuPopup" class="menuPopup" style="display:none">
+  <div class="row" style="display:flex;justify-content:space-between;align-items:center">
+    <div><strong>Tổng video</strong></div>
+    <div id="totalCount" class="mutedSmall">0</div>
+  </div>
+
+  <div class="row">
+    <div style="display:flex;justify-content:space-between;align-items:center"><strong>Tags</strong><span id="clearTagFilter" style="cursor:pointer;color:#1a73e8">Xóa</span></div>
+    <div id="allTags" style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap" class="mutedSmall">—</div>
+  </div>
+
+  <div class="row">
+    <div><strong>Đánh giá</strong></div>
+    <div id="ratingFilters" style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap" class="mutedSmall">
+      <span class="tag" data-star="0">Tất cả</span>
+      <span class="tag" data-star="4.5">≥ 4.5⭐</span>
+      <span class="tag" data-star="4">≥ 4⭐</span>
+      <span class="tag" data-star="3">≥ 3⭐</span>
+      <span class="tag" data-star="2">≥ 2⭐</span>
+    </div>
+  </div>
+
+  <div class="row">
+    <button id="reGrantBtn" class="btn" style="width:100%;background:#0b74ff">Cấp lại quyền cho tất cả</button>
+  </div>
+
+  <div class="row" style="display:flex;gap:6px">
+    <button id="importBtn" class="btn" style="flex:1;background:#28a745">Nhập dữ liệu</button>
+    <button id="exportBtn" class="btn" style="flex:1;background:#6f42c1">Xuất dữ liệu</button>
+  </div>
+
+  <div class="row">
+    <button id="clearAllBtn" class="btn" style="width:100%;background:#e74c3c">Xoá toàn bộ dữ liệu</button>
+  </div>
+</div>
+
+<main>
+  <section id="homePage">
+    <div class="grid" id="gallery"></div>
+  </section>
+
+  <section id="videoPage">
+    <div class="card">
+      <div class="metaRow">
+        <button id="backBtn" style="background:#eee;color:#111;padding:6px;border-radius:8px;border:0">← Trở về</button>
+        <div style="flex:1; min-width:0">
+          <div id="videoTitle" style="font-weight:600" title=""></div>
+          <div id="videoMeta" class="muted small"></div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button id="editBtn" class="iconBtn" style="background:#ffd966;color:#000">Sửa</button>
+          <button id="deleteBtn" class="iconBtn" style="background:#e74c3c">Xoá</button>
+        </div>
+      </div>
+
+      <video id="player" controls playsinline preload="metadata" style="margin-top:8px;border-radius:8px;width:100%"></video>
+
+      <div class="descBox">
+        <strong>Mô tả:</strong>
+        <div id="videoDesc" class="mutedSmall">(Chưa có mô tả)</div>
+      </div>
+
+      <div style="margin-top:8px;display:flex;align-items:center;gap:8px">
+        <div>Views: <strong id="viewCount">0</strong></div>
+        <div style="margin-left:auto">Tags: <span id="videoTags"></span></div>
+      </div>
+
+      <!-- Rating UI -->
+      <div id="ratingBox" style="margin-top:8px;display:flex;align-items:center;gap:6px">
+        <strong>Đánh giá:</strong>
+        <div id="starContainer" style="display:flex;align-items:center;gap:2px;cursor:pointer"></div>
+        <span id="ratingValue" class="small muted">(0 ⭐)</span>
+      </div>
+
+      <div style="margin-top:12px">
+        <h4>Đề xuất theo tag</h4>
+        <div id="suggestList" class="suggestGrid"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- import progress overlay -->
+<div id="progressOverlay">
+  <div id="progressCard">
+    <strong id="progressTitle">Đang tải video...</strong>
+    <div id="progressBar"><div id="progressFill"></div></div>
+    <div id="progressText">0 / 0 (0%)</div>
+    <div id="progressList"></div>
+    <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
+      <button id="progressClose" class="btn" style="background:#2b6cb0">Đóng</button>
+    </div>
+  </div>
+</div>
+
+<!-- mini overlay for thumbnail regen -->
+<div id="miniOverlay">
+  <div class="spinner"></div>
+  <div id="miniText">Đang tạo lại ảnh xem trước...</div>
+</div>
+
+<button id="scrollTopBtn" title="Lên đầu trang">▲</button>
+
+<!-- Popup chỉnh sửa video (chèn ở đây, nằm trước script kết thúc) -->
+<div id="editPopup" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 500;">
+  <div class="panel" style="background: #fff; border-radius: 12px; padding: 16px; width: 90%; max-width: 420px; box-shadow: 0 10px 30px rgba(0,0,0,0.25);">
+    <h3 style="margin-top:0;text-align:center;">Chỉnh sửa thông tin video</h3>
+
+    <label style="font-weight:600;">Tên hiển thị:</label>
+    <input id="editName" type="text" style="width:100%;margin-top:4px;margin-bottom:10px;padding:8px;border-radius:8px;border:1px solid #ccc;">
+
+    <label style="font-weight:600;">Tags:</label>
+    <input id="editTags" type="text" placeholder="Nhập tag, cách nhau bằng dấu ','" style="width:100%;margin-top:4px;padding:8px;border-radius:8px;border:1px solid #ccc;">
+    <div id="tagSuggestions" style="margin-top:6px;display:flex;flex-wrap:wrap;gap:6px;"></div>
+
+    <label style="font-weight:600;margin-top:12px;display:block;">Mô tả:</label>
+    <textarea id="editDesc" rows="3" style="width:100%;margin-top:4px;padding:8px;border-radius:8px;border:1px solid #ccc;"></textarea>
+
+    <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end;">
+      <button id="cancelEdit" class="btn" style="background:#ccc;color:#000;">Hủy</button>
+      <button id="saveEdit" class="btn" style="background:#2b6cb0;">Lưu</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/*
+  index3.html v3.3 - edited: add proper edit popup and replace openEditModal
+*/
+
+(async function(){
+  // ---------- IDB helpers ----------
+  const DB_NAME='video-lib-db', STORE='videos';
+  function openDB(){ return new Promise((res,rej)=>{ const r=indexedDB.open(DB_NAME,1); r.onupgradeneeded=e=>{ const db=e.target.result; if(!db.objectStoreNames.contains(STORE)){ const os=db.createObjectStore(STORE,{keyPath:'id'}); os.createIndex('name','name',{unique:false}); } }; r.onsuccess=e=>res(e.target.result); r.onerror=e=>rej(e.target.error); }); }
+  async function idbPut(item){ const db=await openDB(); return new Promise((res,rej)=>{ const tx=db.transaction(STORE,'readwrite'); tx.objectStore(STORE).put(item); tx.oncomplete=()=>res(item); tx.onerror=()=>rej(tx.error); }); }
+  async function idbGetAll(){ const db=await openDB(); return new Promise((res,rej)=>{ const tx=db.transaction(STORE,'readonly'); const q=tx.objectStore(STORE).getAll(); q.onsuccess=()=>res(q.result); q.onerror=()=>rej(tx.error); }); }
+  async function idbDelete(id){ const db=await openDB(); return new Promise((res,rej)=>{ const tx=db.transaction(STORE,'readwrite'); tx.objectStore(STORE).delete(id); tx.oncomplete=()=>res(); tx.onerror=()=>rej(tx.error); }); }
+  async function idbClear(){ const db=await openDB(); return new Promise((res,rej)=>{ const tx=db.transaction(STORE,'readwrite'); tx.objectStore(STORE).clear(); tx.oncomplete=()=>res(); tx.onerror=()=>rej(tx.error); }); }
+
+  // ---------- DOM ----------
+  const pickDirBtn = document.getElementById('pickDirBtn');
+  const fileDirFallback = document.getElementById('fileDirFallback');
+  const gallery = document.getElementById('gallery');
+  const homePage = document.getElementById('homePage');
+  const videoPage = document.getElementById('videoPage');
+  const player = document.getElementById('player');
+  const videoTitle = document.getElementById('videoTitle');
+  const videoMeta = document.getElementById('videoMeta');
+  const videoTags = document.getElementById('videoTags');
+  const viewCount = document.getElementById('viewCount');
+  const videoDesc = document.getElementById('videoDesc');
+  const suggestList = document.getElementById('suggestList');
+  const backBtn = document.getElementById('backBtn');
+  const editBtn = document.getElementById('editBtn');
+  const deleteBtn = document.getElementById('deleteBtn');
+  const scrollBtn = document.getElementById('scrollTopBtn');
+  const searchInput = document.getElementById('searchInput');
+
+  const siteTitle = document.getElementById('siteTitle');
+  const menuBtn = document.getElementById('menuBtn');
+  const menuPopup = document.getElementById('menuPopup');
+  const totalCountEl = document.getElementById('totalCount');
+  const allTagsEl = document.getElementById('allTags');
+  const reGrantBtn = document.getElementById('reGrantBtn');
+  const clearAllBtn = document.getElementById('clearAllBtn');
+  const clearTagFilterBtn = document.getElementById('clearTagFilter');
+  const ratingFilters = document.getElementById('ratingFilters');
+  const importBtn = document.getElementById('importBtn');
+  const exportBtn = document.getElementById('exportBtn');
+  const progressOverlay = document.getElementById('progressOverlay');
+  const progressTitle = document.getElementById('progressTitle');
+  const progressFill = document.getElementById('progressFill');
+  const progressText = document.getElementById('progressText');
+  const progressList = document.getElementById('progressList');
+  const progressClose = document.getElementById('progressClose');
+  const miniOverlay = document.getElementById('miniOverlay');
+  const miniText = document.getElementById('miniText');
+
+  const ratingBox = document.getElementById('ratingBox');
+  const starContainer = document.getElementById('starContainer');
+  const ratingValue = document.getElementById('ratingValue');
+
+  // edit popup elements
+  const editPopup = document.getElementById('editPopup');
+  const editName = document.getElementById('editName');
+  const editTags = document.getElementById('editTags');
+  const editDesc = document.getElementById('editDesc');
+  const tagSuggestions = document.getElementById('tagSuggestions');
+  const cancelEditBtn = document.getElementById('cancelEdit');
+  const saveEditBtn = document.getElementById('saveEdit');
+
+  // ---------- state ----------
+  let videos = [];
+  let currentVideoId = null;
+  let currentObjectURL = null;
+  let activeFilterTag = null;
+  let activeRatingFilter = 0;
+
+  const uid = ()=> crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36)+Math.random().toString(36).slice(2);
+  const escapeHtml = s=> s?String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c])):'';
+
+  // ---------- helpers ----------
+  function bytesToSize(bytes){ const sizes=['B','KB','MB','GB']; if(!bytes) return '0 B'; const i=Math.floor(Math.log(bytes)/Math.log(1024)); return (bytes/Math.pow(1024,i)).toFixed(2)+' '+sizes[i]; }
+
+  async function createThumbnailFromFile(file){
+    const tryTimes = [0.5, 1.0, 2.0]; // seconds
+    return new Promise((resolve)=>{
+      const vid = document.createElement('video');
+      vid.muted = true;
+      vid.preload = 'metadata';
+      vid.src = URL.createObjectURL(file);
+      let cleaned=false;
+      const clean = ()=>{ if(!cleaned){ cleaned=true; try{ URL.revokeObjectURL(vid.src);}catch{} } };
+      const fail = ()=>{ clean(); resolve(null); };
+      const attemptCapture = async (timeIndex)=>{
+        try{
+          const target = Math.min( (tryTimes[timeIndex] || 0.5), Math.max(0.01, Math.min(vid.duration || 0.5, tryTimes[timeIndex] || 0.5)) );
+          const onseek = ()=>{
+            try{
+              const canvas = document.createElement('canvas');
+              const w = Math.min(640, vid.videoWidth || 320);
+              const h = Math.round(w * (vid.videoHeight/vid.videoWidth || 9/16));
+              canvas.width = w; canvas.height = h;
+              const ctx = canvas.getContext('2d');
+              ctx.drawImage(vid, 0, 0, w, h);
+              const img = ctx.getImageData(0,0,w,h);
+              let sum=0;
+              for(let i=0;i<img.data.length;i+=4){
+                const r=img.data[i], g=img.data[i+1], b=img.data[i+2];
+                sum += (0.2126*r + 0.7152*g + 0.0722*b);
+              }
+              const avg = sum / (w*h);
+              if(avg < 10){
+                vid.removeEventListener('seeked', onseek);
+                if(timeIndex+1 < tryTimes.length) { setTimeout(()=> attemptCapture(timeIndex+1), 80); }
+                else { clean(); resolve(null); }
+                return;
+              }
+              canvas.toBlob(blob => { clean(); resolve(blob); }, 'image/jpeg', 0.75);
+            }catch(e){
+              if(timeIndex+1 < tryTimes.length) { setTimeout(()=> attemptCapture(timeIndex+1), 80); }
+              else fail();
+            }
+          };
+          vid.addEventListener('seeked', onseek, {once:true});
+          try{ vid.currentTime = target; }catch(e){ setTimeout(()=>{ try{ vid.currentTime = target; }catch{} },100); }
+        }catch(e){ if(timeIndex+1 < tryTimes.length) setTimeout(()=> attemptCapture(timeIndex+1),80); else fail(); }
+      };
+      vid.addEventListener('loadedmetadata', ()=> attemptCapture(0), {once:true});
+      vid.addEventListener('error', ()=> fail(), {once:true});
+      // safety timeout
+      setTimeout(()=>{ if(!cleaned){ clean(); resolve(null); } }, 5000);
+    });
+  }
+
+  // ---------- render menu summary and gallery ----------
+  function renderMenuSummary(){
+    totalCountEl.textContent = videos.length;
+    const tagSet = new Set();
+    videos.forEach(v=> (v.tags||[]).forEach(t=> tagSet.add(t) ));
+    allTagsEl.innerHTML = tagSet.size ? Array.from(tagSet).map(t=>`<span class="tag" data-tag="${escapeHtml(t)}">${escapeHtml(t)}</span>`).join(' ') : '—';
+    // tag click handlers
+    Array.from(allTagsEl.querySelectorAll('.tag')).forEach(el=> el.onclick = ()=> { activeFilterTag = el.dataset.tag; activeRatingFilter = 0; applyFilters(); menuPopup.style.display='none'; });
+  }
+
+  function applyFilters(){
+    const q = (searchInput.value||'').trim().toLowerCase();
+    const filtered = videos.filter(v=>{
+      if(activeFilterTag && !(v.tags||[]).map(x=>x.toLowerCase()).includes(activeFilterTag.toLowerCase())) return false;
+      if(activeRatingFilter && (v.rating||0) < activeRatingFilter) return false;
+      if(!q) return true;
+      if((v.name||'').toLowerCase().includes(q)) return true;
+      if((v.displayName||'').toLowerCase().includes(q)) return true;
+      if((v.tags||[]).some(t=>t.toLowerCase().includes(q))) return true;
+      if((v.desc||'').toLowerCase().includes(q)) return true;
+      return false;
+    });
+    renderGallery(filtered);
+  }
+
+  function renderGallery(list){
+    gallery.innerHTML = '';
+    if(!list.length){ gallery.innerHTML = `<div class="mutedSmall">Không có video.</div>`; return; }
+    list.forEach(it=>{
+      const div = document.createElement('div'); div.className='card';
+      const thumbURL = it.thumbnail ? URL.createObjectURL(it.thumbnail) : '';
+      const ratingText = it.rating ? ` ${parseFloat(it.rating).toFixed(1)}⭐` : '';
+      div.innerHTML = `
+        <img class="thumb" src="${thumbURL}" data-id="${it.id}" alt="${escapeHtml(it.displayName||it.name)}" />
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div class="titleOneLine small" title="${escapeHtml(it.displayName||it.name)}">${escapeHtml(it.displayName||it.name)}</div>
+          <div class="small muted">${ratingText}</div>
+        </div>
+        <div class="taglist">${(it.tags||[]).slice(0,4).map(t=>`<span class="tag" data-tag="${escapeHtml(t)}">${escapeHtml(t)}</span>`).join(' ')}</div>
+      `;
+      const imgEl = div.querySelector('.thumb');
+      imgEl.addEventListener('click', ()=> openVideoPage(it.id));
+      div.querySelectorAll('.tag').forEach(el=> el.addEventListener('click', (ev)=> { ev.stopPropagation(); activeFilterTag = el.dataset.tag; applyFilters(); }));
+      imgEl.onload = ()=> { if(it.thumbnail) URL.revokeObjectURL(thumbURL); };
+      gallery.appendChild(div);
+    });
+  }
+
+  // ---------- add files with import progress ----------
+  async function addFilesFromHandles(handles){
+    progressOverlay.style.display = 'flex';
+    progressFill.style.width = '0%';
+    progressText.textContent = `0 / 0 (0%)`;
+    progressList.innerHTML = '';
+    progressClose.disabled = true;
+
+    // build file list
+    const fileEntries = [];
+    for(const h of handles){
+      try{
+        if(h instanceof File) fileEntries.push({file: h, handle: null});
+        else if(h.kind === 'file') { const f = await h.getFile(); fileEntries.push({file: f, handle: h}); }
+      }catch(e){ console.error('walk handle err', e); }
+    }
+
+    const total = fileEntries.length;
+    for(let i=0;i<total;i++){
+      const entry = fileEntries[i];
+      const file = entry.file;
+      const handle = entry.handle;
+      const li = document.createElement('div'); li.textContent = `Đang: ${file.name}`; progressList.prepend(li);
+      const percent = Math.round((i/total)*100);
+      progressFill.style.width = percent + '%';
+      progressText.textContent = `${i} / ${total} (${percent}%)`;
+      try{
+        // nếu không có type, thử đoán từ tên file
+        let fileType = file.type;
+        if (!fileType) {
+          const lower = (file.name||'').toLowerCase();
+          if (!lower.includes('.')) {
+            // nếu tên file không có dấu chấm, giả định là mp4
+            fileType = 'video/mp4';
+          } else if (lower.endsWith('.mov')) fileType = 'video/quicktime';
+          else if (lower.endsWith('.mkv')) fileType = 'video/x-matroska';
+          else if (lower.endsWith('.webm')) fileType = 'video/webm';
+          else if (lower.endsWith('.avi')) fileType = 'video/x-msvideo';
+        }
+
+        if (!fileType || !fileType.startsWith('video')) {
+          li.textContent = `Bỏ: ${file.name} (không phải video)`;
+          continue;
+        }
+
+        // duplicate check by name+size+lastModified
+        const dup = videos.find(v => v.name === file.name && v.size === file.size && v.lastModified === file.lastModified);
+        if(dup){ li.textContent = `Bỏ (trùng): ${file.name}`; continue; }
+
+        // create thumbnail (may return null)
+        const thumb = await createThumbnailFromFile(file);
+        const item = {
+          id: uid(),
+          name: file.name,
+          displayName: file.name,
+          size: file.size,
+          lastModified: file.lastModified,
+          tags: [],
+          desc: '',
+          viewCount: 0,
+          thumbnail: thumb || null,
+          handle: handle || null,
+          rating: 0
+        };
+        await idbPut(item);
+        videos.push(item);
+        li.textContent = `Thêm: ${file.name}`;
+      }catch(e){
+        li.textContent = `Lỗi: ${file.name}`;
+        console.error('add file error', e);
+      }
+      const p = Math.round(((i+1)/total)*100);
+      progressFill.style.width = p + '%';
+      progressText.textContent = `${i+1} / ${total} (${p}%)`;
+    }
+
+    // finished import
+    progressFill.style.width = '100%';
+    progressText.textContent = `${fileEntries.length} / ${fileEntries.length} (100%)`;
+    progressClose.disabled = false;
+    // refresh UI
+    videos.sort((a,b)=> (a.displayName||a.name||'').localeCompare(b.displayName||b.name||''));
+    applyFilters();
+    renderMenuSummary();
+
+    // auto-run thumbnail regen for those with thumbnail===null
+    const needRegen = videos.filter(v=> !v.thumbnail );
+    if(needRegen.length) {
+      miniText.textContent = `Tạo lại ảnh xem trước (${needRegen.length})...`;
+      miniOverlay.style.display = 'flex';
+      for(let i=0;i<needRegen.length;i++){
+        const it = needRegen[i];
+        try{
+          let file = null;
+          if(it.handle && it.handle.getFile){
+            try{ file = await it.handle.getFile(); }catch(e){ console.warn('cannot get file for regen', e); }
+          }
+          if(!file){ continue; }
+          const thumb = await createThumbnailFromFile(file);
+          if(thumb){
+            it.thumbnail = thumb;
+            await idbPut(it);
+          }
+        }catch(e){ console.error('regen thumb err', e); }
+      }
+      miniOverlay.style.display = 'none';
+      applyFilters();
+      renderMenuSummary();
+    }
+  }
+
+  // ---------- directory picker handlers ----------
+  pickDirBtn.addEventListener('click', async ()=>{
+    progressOverlay.style.display = 'flex';
+    progressFill.style.width = '2%';
+    progressText.textContent = `0 / 0 (0%)`;
+    progressList.innerHTML = '';
+    progressClose.disabled = true;
+
+    if(window.showDirectoryPicker){
+      try{
+        const dirHandle = await window.showDirectoryPicker();
+        const fileHandles = [];
+        async function walk(handle){
+          for await (const [name, h] of handle.entries()){
+            if(h.kind === 'file') fileHandles.push(h);
+            else if(h.kind === 'directory') await walk(h);
+          }
+        }
+        await walk(dirHandle);
+        await addFilesFromHandles(fileHandles);
+      }catch(e){
+        console.error('dir pick cancelled or error', e);
+        progressOverlay.style.display = 'none';
+      }
+    } else {
+      fileDirFallback.click();
+    }
+  });
+
+  fileDirFallback.addEventListener('change', async (e)=>{
+    const files = Array.from(e.target.files || []);
+    if(files.length) {
+      if(progressOverlay.style.display !== 'flex') progressOverlay.style.display = 'flex';
+      await addFilesFromHandles(files);
+    }
+    fileDirFallback.value = '';
+  });
+
+  progressClose.addEventListener('click', ()=> { progressOverlay.style.display = 'none'; });
+
+  // ---------- open video page ----------
+let lastScrollY = 0;
+
+async function openVideoPage(id) {
+  const it = videos.find(v => v.id === id);
+  if (!it) return alert('Không tìm thấy video');
+
+  // Lưu vị trí cuộn hiện tại của trang A
+  lastScrollY = window.scrollY;
+
+  stopCurrentPlayer();
+  currentVideoId = id;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  // Thêm lịch sử để xử lý nút Back
+  history.pushState({ page: 'video', id }, '', '#video');
+
+  if (it.handle && it.handle.getFile) {
+    try {
+      if ('queryPermission' in it.handle) {
+        let perm = await it.handle.queryPermission({ mode: 'read' });
+        if (perm === 'prompt') perm = await it.handle.requestPermission({ mode: 'read' });
+        if (perm !== 'granted') throw new Error('no-perm');
+      }
+
+      const file = await it.handle.getFile();
+      const url = URL.createObjectURL(file);
+      currentObjectURL = url;
+      player.src = url;
+
+      // update UI
+      videoTitle.textContent = it.displayName || it.name;
+      videoTitle.title = it.displayName || it.name;
+      videoMeta.textContent = `${it.name} • ${bytesToSize(it.size)}`;
+      videoDesc.textContent = it.desc || '(Chưa có mô tả)';
+      videoTags.innerHTML = (it.tags || []).map(
+        t => `<span class="tag" data-tag="${escapeHtml(t)}">${escapeHtml(t)}</span>`
+      ).join(' ');
+      viewCount.textContent = it.viewCount || 0;
+
+      // increment view on playing once
+      const inc = () => {
+        it.viewCount = (it.viewCount || 0) + 1;
+        idbPut(it).catch(() => {});
+        viewCount.textContent = it.viewCount;
+        player.removeEventListener('playing', inc);
+      };
+      player.addEventListener('playing', inc);
+
+      renderStars(it.rating || 0);
+      attachStarHandlers(it);
+      renderSuggestions(it.id);
+
+      // show page
+      homePage.style.display = 'none';
+      videoPage.style.display = 'block';
+
+      // tag click
+      Array.from(videoTags.querySelectorAll('.tag')).forEach(tagEl => {
+        tagEl.addEventListener('click', e => {
+          e.stopPropagation();
+          activeFilterTag = tagEl.dataset.tag;
+          applyFilters();
+          videoPage.style.display = 'none';
+          homePage.style.display = '';
+        });
+      });
+    } catch (err) {
+      console.error('openVideo err', err);
+      alert('Không thể đọc file gốc. Vui lòng cấp quyền hoặc thêm lại thư mục.');
+      return;
+    }
+  } else {
+    alert('File không có handle dài hạn. Hãy thêm lại thư mục chứa file.');
+    return;
+  }
+}
+
+  function stopCurrentPlayer(){
+    try{
+      player.pause();
+      player.removeAttribute('src');
+      player.load();
+      if(currentObjectURL){ URL.revokeObjectURL(currentObjectURL); currentObjectURL = null; }
+    }catch(e){}
+  }
+
+  // ---------- suggestions ----------
+  function renderSuggestions(id){
+    suggestList.innerHTML = '';
+    const cur = videos.find(v=>v.id===id); if(!cur) return;
+    const tagset = new Set((cur.tags||[]).map(t=>t.toLowerCase()));
+    const others = videos.filter(v=>v.id!==id).map(v=> ({...v, score: (v.tags||[]).reduce((a,t)=> a + (tagset.has(t.toLowerCase())?1:0), 0)} ));
+    const withScore = others.filter(o=>o.score>0).sort((a,b)=> b.score - a.score || (b.viewCount||0)-(a.viewCount||0));
+    const listToShow = (withScore.length ? withScore : videos.filter(v=>v.id!==id).sort((a,b)=>(b.viewCount||0)-(a.viewCount||0))).slice(0,8);
+    listToShow.forEach(it=>{
+      const div = document.createElement('div'); div.className='card';
+      const thumbURL = it.thumbnail ? URL.createObjectURL(it.thumbnail) : '';
+      div.innerHTML = `<img class="thumb" src="${thumbURL}" alt="${escapeHtml(it.displayName||it.name)}"><div class="small">${escapeHtml(it.displayName||it.name)}</div>`;
+      div.querySelector('img').addEventListener('click', ()=> openVideoPage(it.id));
+      div.querySelector('img').onload = ()=> { if(it.thumbnail) URL.revokeObjectURL(thumbURL); };
+      suggestList.appendChild(div);
+    });
+  }
+
+  // ---------- edit / delete ----------
+
+  // New openEditModal: uses the popup instead of prompt chain
+  function openEditModal(id) {
+    const it = videos.find(v => v.id === id);
+    if (!it) return;
+
+    // populate fields
+    editPopup.style.display = 'flex';
+    editPopup.classList.remove('hidden');
+    editName.value = it.displayName || it.name;
+    editTags.value = (it.tags || []).join(', ');
+    editDesc.value = it.desc || '';
+
+    // build suggestions from all tags
+    const allTagSet = new Set();
+    videos.forEach(v => (v.tags || []).forEach(t => allTagSet.add(t)));
+    tagSuggestions.innerHTML = Array.from(allTagSet).filter(t=>t.trim()).map(t => `<span class="tag" data-tag="${escapeHtml(t)}">${escapeHtml(t)}</span>`).join(' ');
+
+    // attach click handlers to suggested tags
+    Array.from(tagSuggestions.querySelectorAll('.tag')).forEach(el => {
+      el.onclick = () => {
+        const tag = el.dataset.tag;
+        const current = editTags.value.split(',').map(s => s.trim()).filter(Boolean);
+        if (!current.includes(tag)) current.push(tag);
+        editTags.value = current.join(', ');
+      };
+    });
+
+    // clicking outside panel closes popup
+    const onOutsideClick = (e) => {
+      if (!e.target.closest('.panel')) {
+        closePopup();
+      }
+    };
+    setTimeout(()=> document.addEventListener('click', onOutsideClick)); // timeout to avoid immediate trigger
+
+    // cancel
+    cancelEditBtn.onclick = () => {
+      closePopup();
+    };
+
+    // save
+    saveEditBtn.onclick = async () => {
+      it.displayName = editName.value.trim() || it.name;
+      it.tags = editTags.value.split(',').map(s => s.trim()).filter(Boolean);
+      it.desc = editDesc.value.trim();
+      await idbPut(it);
+      videos = videos.map(v => v.id === it.id ? it : v);
+      applyFilters();
+      renderMenuSummary();
+      if (currentVideoId === id) {
+        videoTitle.textContent = it.displayName || it.name;
+        videoTags.innerHTML = (it.tags || []).map(t => `<span class="tag">${escapeHtml(t)}</span>`).join(' ');
+        videoDesc.textContent = it.desc || '(Chưa có mô tả)';
+        renderSuggestions(it.id);
+      }
+      closePopup();
+    };
+
+    function closePopup(){
+      editPopup.style.display = 'none';
+      editPopup.classList.add('hidden');
+      document.removeEventListener('click', onOutsideClick);
+    }
+  }
+
+  editBtn.addEventListener('click', ()=>{ if(currentVideoId) openEditModal(currentVideoId); });
+
+  deleteBtn.addEventListener('click', async ()=>{
+    if(!currentVideoId) return;
+    if(!confirm('Xoá video này khỏi thư viện?')) return;
+    try{ await idbDelete(currentVideoId); videos = videos.filter(v=>v.id!==currentVideoId); stopCurrentPlayer(); currentVideoId=null; videoPage.style.display='none'; homePage.style.display=''; applyFilters(); renderMenuSummary(); }catch(e){ console.error(e); alert('Xoá thất bại'); }
+
+let lastScroll = 0;
+window.addEventListener("scroll", () => {
+  const header = document.querySelector("header");
+  const current = window.scrollY;
+
+  if (current > lastScroll && current > 40) {
+    // Kéo xuống → thu nhỏ
+    header.classList.add("compact");
+  } else if (current < lastScroll - 10 || current <= 10) {
+    // Kéo lên hoặc về đầu → mở rộng lại
+    header.classList.remove("compact");
+  }
+
+  lastScroll = current;
+});
+});
+
+  // ---------- clear all & regrant ----------
+  clearAllBtn.addEventListener('click', async ()=>{
+    if(!confirm('Xác nhận xoá toàn bộ dữ liệu (không thể hoàn tác)?')) return;
+    try{ await idbClear(); videos = []; currentVideoId=null; stopCurrentPlayer(); videoPage.style.display='none'; homePage.style.display=''; applyFilters(); renderMenuSummary(); alert('Đã xoá toàn bộ dữ liệu.'); }catch(e){ console.error(e); alert('Xoá thất bại'); }
+    menuPopup.style.display='none';
+  });
+
+  reGrantBtn.addEventListener('click', async ()=>{
+    if(!confirm('Yêu cầu cấp lại quyền đọc cho tất cả file đã lưu?')) return;
+    for(const it of videos){
+      try{ if(it.handle && it.handle.requestPermission) await it.handle.requestPermission({mode:'read'}); }catch(e){}
+    }
+    alert('Yêu cầu cấp quyền đã được gửi (nếu trình duyệt hỗ trợ).');
+    menuPopup.style.display='none';
+  });
+
+  // ---------- import/export data ----------
+  exportBtn.addEventListener('click', async ()=>{
+    const data = await idbGetAll();
+    const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'video-data.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    menuPopup.style.display = 'none';
+  });
+
+  importBtn.addEventListener('click', async ()=>{
+  const inp = document.createElement('input');
+  inp.type = 'file';
+  inp.accept = 'application/json';
+
+  inp.onchange = async (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+
+    try{
+      const text = await file.text();
+      const imported = JSON.parse(text);
+
+      if(!Array.isArray(imported)) throw new Error('invalid');
+
+      let added = 0;
+
+      for(const raw of imported){
+
+        // ----- Chuẩn hoá dữ liệu JSON -----
+        const clean = {
+          id: raw.id || uid(),
+          name: raw.name || raw.displayName || 'unknown',
+          displayName: raw.displayName || raw.name || 'unknown',
+
+          size: Number(raw.size) || 0,
+          lastModified: Number(raw.lastModified) || 0,
+
+          tags: Array.isArray(raw.tags) ? raw.tags : [],
+          desc: raw.desc || '',
+          viewCount: Number(raw.viewCount) || 0,
+
+          // chuyển {} → null
+          thumbnail: (raw.thumbnail && Object.keys(raw.thumbnail).length) ? raw.thumbnail : null,
+          handle: null, // KHÔNG BAO GIỜ import handle
+
+          rating: Number(raw.rating) || 0
+        };
+
+        // ----- check trùng ID ---
+        if (videos.some(v => v.id === clean.id)) continue;
+
+        await idbPut(clean);
+        videos.push(clean);
+        added++;
+      }
+
+      alert(`Đã nhập ${added} mục mới (bỏ qua mục trùng).`);
+
+      videos.sort((a,b)=> (a.displayName||a.name).localeCompare(b.displayName||b.name));
+
+      applyFilters();
+      renderMenuSummary();
+      if (typeof renderVideoGrid === "function") renderVideoGrid();
+
+    }
+    catch(err){
+      console.error(err);
+      alert('Lỗi: dữ liệu không hợp lệ hoặc bị hỏng.');
+    }
+
+    menuPopup.style.display = 'none';
+  };
+
+  inp.click();
+});
+
+
+  // ---------- search & menu ----------
+  searchInput.addEventListener('input', ()=> {
+    const q = searchInput.value.trim();
+    if (q.length > 0) {
+      // nếu đang trong videoPage, thoát về homePage trước khi hiển thị kết quả
+      if (videoPage.style.display === 'block') {
+        stopCurrentPlayer();
+        videoPage.style.display = 'none';
+        homePage.style.display = '';
+      }
+    }
+    applyFilters();
+  });
+
+menuBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  const rect = menuBtn.getBoundingClientRect();
+  // Tính vị trí hiển thị theo tọa độ hiện tại của nút
+  menuPopup.style.display = menuPopup.style.display === 'block' ? 'none' : 'block';
+  if (menuPopup.style.display === 'block') {
+    menuPopup.style.position = 'fixed';
+    menuPopup.style.top = (rect.bottom + 8) + 'px';
+    menuPopup.style.right = (window.innerWidth - rect.right) + 'px';
+  }
+});
+  document.addEventListener('click', (e)=> { if(!menuPopup.contains(e.target) && e.target !== menuBtn) menuPopup.style.display='none'; });
+
+  clearTagFilterBtn.addEventListener('click', ()=> { activeFilterTag = null; applyFilters(); });
+
+  // rating filters handlers
+  ratingFilters.querySelectorAll('.tag').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      activeRatingFilter = parseFloat(el.dataset.star) || 0;
+      activeFilterTag = null; // clear tag when choosing rating
+      applyFilters();
+      menuPopup.style.display='none';
+    });
+  });
+
+  // ---------- back & header ----------
+backBtn.addEventListener('click', () => {
+  stopCurrentPlayer();
+  videoPage.style.display = 'none';
+  homePage.style.display = '';
+  window.scrollTo({ top: lastScrollY, behavior: 'instant' });
+  history.replaceState(null, '', ' ');
+});
+
+// ---------- xử lý nút Back của điện thoại / trình duyệt ----------
+window.addEventListener('popstate', (e) => {
+  if (e.state && e.state.page === 'video') {
+    // đang ở B mà bấm back → quay lại A
+    stopCurrentPlayer();
+    videoPage.style.display = 'none';
+    homePage.style.display = '';
+    window.scrollTo({ top: lastScrollY, behavior: 'instant' });
+  } else {
+    // nếu đã ở A → đảm bảo vẫn ở giao diện chính, không thoát web
+    videoPage.style.display = 'none';
+    homePage.style.display = '';
+  }
+});
+
+  siteTitle.addEventListener('click', ()=>{
+    activeFilterTag = null; searchInput.value = '';
+    for (let i = videos.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [videos[i], videos[j]] = [videos[j], videos[i]];
+    }
+    renderGallery(videos);
+    renderMenuSummary();
+    homePage.style.display=''; videoPage.style.display='none';
+    window.scrollTo({top:0,behavior:'smooth'});
+  });
+
+  scrollBtn.addEventListener('click', ()=> window.scrollTo({top:0,behavior:'smooth'}));
+
+  // ---------- rating stars ----------
+  function renderStars(rating) {
+  starContainer.innerHTML = '';
+  for (let i = 1; i <= 5; i++) {
+    const span = document.createElement('span');
+    span.className = 'star';
+    span.textContent = '★';
+    span.dataset.index = i;
+    if (rating >= i) span.classList.add('full');
+    else if (rating >= i - 0.5) span.classList.add('half');
+    starContainer.appendChild(span);
+  }
+  ratingValue.textContent = `(${rating.toFixed(1)} ⭐)`;
+}
+
+  function attachStarHandlers(item) {
+  Array.from(starContainer.children).forEach(star => {
+    star.onclick = async (e) => {
+      const rect = star.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const isHalf = clickX < rect.width / 2;
+      const val = parseInt(star.dataset.index) - (isHalf ? 0.5 : 0);
+
+      item.rating = val;
+      await idbPut(item);
+      renderStars(val);
+      attachStarHandlers(item);
+      ratingValue.textContent = `(${val.toFixed(1)} ⭐)`;
+      renderMenuSummary();
+    };
+  });
+}
+
+  // ---------- expose debug API ----------
+  window._videoLib = { list: ()=>videos, dbAll: idbGetAll, dbClear: idbClear };
+window.addEventListener('scroll', () => {
+  if (window.scrollY > 200) scrollBtn.style.display = 'flex';
+  else scrollBtn.style.display = 'none';
+});
+  // ---------- initial load ----------
+  (async ()=>{
+  videos = await idbGetAll() || [];
+  // đảm bảo các thuộc tính cơ bản luôn tồn tại
+  videos = videos.map(v=> ({ rating:0, tags:[], desc:'', viewCount:0, ...v }));
+
+  // Ưu tiên: video chưa có tag lên đầu, sau đó random toàn bộ
+  const shuffle = arr => {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+  };
+
+  // Tách nhóm không có tag và có tag
+  const noTag = videos.filter(v => !v.tags || v.tags.length === 0);
+  const hasTag = videos.filter(v => v.tags && v.tags.length > 0);
+  shuffle(noTag);
+  shuffle(hasTag);
+  videos = [...noTag, ...hasTag];
+
+  // render ra
+  renderGallery(videos);
+  renderMenuSummary();
+})();
+
+})();
+</script>
+</body>
+</html>
